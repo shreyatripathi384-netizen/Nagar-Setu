@@ -1,17 +1,31 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import DashboardHeader from "../../components/DashboardHeader";
 import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabaseClient";
 
-/**
- * TODO (Member B - feature/department-worker):
- * - List of complaints filtered by this department (profile.department_id)
- * - Sort by date, day/week/month view
- * - Assign a worker to a complaint (manual selection, not AI)
- * - Set resolution deadline
- * - Review worker's before/after photo and "Confirm Resolved"
- */
 export default function DepartmentDashboard() {
   const { profile } = useAuth();
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchIssues() {
+      if (!profile?.department_id) return;
+      const { data, error } = await supabase
+        .from("issues")
+        .select("*")
+        .eq("department_id", profile.department_id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching issues:", error);
+      } else {
+        setIssues(data);
+      }
+      setLoading(false);
+    }
+    fetchIssues();
+  }, [profile]);
 
   return (
     <div className="app-shell">
@@ -20,11 +34,24 @@ export default function DepartmentDashboard() {
         <h2 style={{ fontFamily: "var(--font-display)", color: "var(--navy)" }}>
           Department Complaints
         </h2>
-        <div className="placeholder-box">
-          Department dashboard goes here — complaint list, worker assignment, resolution review.
-          <br />
-          Owned by: Member B
-        </div>
+
+        {loading && <p>Loading complaints...</p>}
+
+        {!loading && issues.length === 0 && (
+          <p>No complaints reported for your department yet.</p>
+        )}
+
+        {!loading && issues.map((issue) => (
+          <div key={issue.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
+            <strong>{issue.category || "Uncategorized"}</strong> — {issue.severity || "N/A"}
+            <br />
+            Location: {issue.location_text}
+            <br />
+            Status: {issue.status}
+            <br />
+            {issue.description}
+          </div>
+        ))}
       </div>
     </div>
   );
