@@ -88,6 +88,12 @@ export default function DepartmentDashboard() {
       return true;
     });
   }
+    function getStatusColor(status) {
+    if (status === "Reported") return "#f59e0b";
+    if (status === "In Progress") return "#3b82f6";
+    if (status === "Resolved") return "#22c55e";
+    return "#999";
+  }
 
   const filteredIssues = filterByDate(issues);
 
@@ -121,7 +127,19 @@ export default function DepartmentDashboard() {
               <br />
               Reported on: {new Date(issue.created_at).toLocaleDateString()}
               <br />
-              Status: {issue.status}
+               Status:{" "}
+              <span
+                style={{
+                  backgroundColor: getStatusColor(issue.status),
+                  color: "white",
+                  padding: "2px 10px",
+                  borderRadius: "12px",
+                  fontSize: "0.85rem",
+                  fontWeight: "bold",
+                }}
+              >
+                {issue.status}
+              </span>
               <br />
               {issue.description}
 

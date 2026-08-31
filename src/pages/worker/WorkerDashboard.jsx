@@ -94,7 +94,22 @@ export default function WorkerDashboard() {
               <br />
               Location: {task.location_text}
               <br />
-              Status: {task.status}
+                            Status:{" "}
+              <span
+                style={{
+                  backgroundColor:
+                    task.status === "Reported" ? "#f59e0b" :
+                    task.status === "In Progress" ? "#3b82f6" :
+                    task.status === "Resolved" ? "#22c55e" : "#999",
+                  color: "white",
+                  padding: "2px 10px",
+                  borderRadius: "12px",
+                  fontSize: "0.85rem",
+                  fontWeight: "bold",
+                }}
+              >
+                {task.status}
+              </span>
               <br />
               {task.description}
 
