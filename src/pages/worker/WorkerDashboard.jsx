@@ -20,7 +20,6 @@ export default function WorkerDashboard() {
       .select("*")
       .eq("assigned_worker_id", profile.id)
       .order("created_at", { ascending: false });
-
     if (error) console.error("Error fetching tasks:", error);
     else setTasks(data);
     setLoading(false);
@@ -34,7 +33,7 @@ export default function WorkerDashboard() {
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => resolve(null), // agar permission deny ho, to bina location ke aage badhenge
+        () => resolve(null),
         { enableHighAccuracy: true, timeout: 8000 }
       );
     });
@@ -45,42 +44,31 @@ export default function WorkerDashboard() {
       alert("Please select/click a photo before marking resolved.");
       return;
     }
-
     setUploading(issueId);
-
-    // 1. Location capture karo (agar allow kiya to)
     const location = await getCurrentLocation();
-
-    // 2. Photo Supabase Storage me upload karo
     const fileExt = file.name.split(".").pop();
-    const fileName = `resolved-${issueId}-${Date.now()}.${fileExt}`;
+    const fileName = "resolved-" + issueId + "-" + Date.now() + "." + fileExt;
 
-    const { error: uploadError } = await supabase.storage
-      .from("issue-media")
-      .upload(fileName, file);
-
-    if (uploadError) {
-      alert("Error uploading photo: " + uploadError.message);
+    const uploadResult = await supabase.storage.from("issue-media").upload(fileName, file);
+    if (uploadResult.error) {
+      alert("Error uploading photo: " + uploadResult.error.message);
       setUploading(null);
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("issue-media")
-      .getPublicUrl(fileName);
+    const urlResult = supabase.storage.from("issue-media").getPublicUrl(fileName);
 
-    // 3. Photo URL + location database me save karo
-    const { error: updateError } = await supabase
+    const updateResult = await supabase
       .from("issues")
       .update({
-        resolved_photo_url: urlData.publicUrl,
-        resolved_lat: location?.lat || null,
-        resolved_lng: location?.lng || null,
+        resolved_photo_url: urlResult.data.publicUrl,
+        resolved_lat: location ? location.lat : null,
+        resolved_lng: location ? location.lng : null,
       })
       .eq("id", issueId);
 
-    if (updateError) {
-      alert("Error saving proof: " + updateError.message);
+    if (updateResult.error) {
+      alert("Error saving proof: " + updateResult.error.message);
     } else {
       alert("Proof uploaded! Sent to department for confirmation.");
       fetchTasks();
@@ -99,60 +87,53 @@ export default function WorkerDashboard() {
         {loading && <p>Loading tasks...</p>}
         {!loading && tasks.length === 0 && <p>No tasks assigned to you yet.</p>}
 
-        {!loading && tasks.map((task) => (
-          <div key={task.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
-            <strong>{task.category || "Uncategorized"}</strong> — {task.severity || "N/A"}
-            <br />
-            Location: {task.location_text}
-            <br />
-            Status: {task.status}
-            <br />
-            {task.description}
+        {!loading && tasks.map(function (task) {
+          return (
+            <div key={task.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
+              <strong>{task.category || "Uncategorized"}</strong> — {task.severity || "N/A"}
+              <br />
+              Location: {task.location_text}
+              <br />
+              Status: {task.status}
+              <br />
+              {task.description}
 
-            {task.resolved_photo_url && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <em>Proof already submitted, waiting for department confirmation.</em>
-                <br />
-                <img src={task.resolved_photo_url} alt="proof" style={{ maxWidth: "150px", marginTop: "0.5rem" }} />
-                {task.resolved_lat && task.resolved_lng && (
-                  <div>
-                    
-                      href={`https://www.google.com/maps?q=${task.resolved_lat},${task.resolved_lng}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View captured location on map
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
+              {task.resolved_photo_url && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <em>Proof already submitted, waiting for department confirmation.</em>
+                  <br />
+                  <img src={task.resolved_photo_url} alt="proof" style={{ maxWidth: "150px", marginTop: "0.5rem" }} />
+                  {task.resolved_lat && task.resolved_lng && (
+                    <div>
+                      <a href={"https://www.google.com/maps?q=" + task.resolved_lat + "," + task.resolved_lng} target="_blank" rel="noreferrer">
+                        View captured location on map
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {task.status !== "Resolved" && !task.resolved_photo_url && (
-              <div style={{ marginTop: "0.75rem" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  id={`photo-${task.id}`}
-                />
-                <button
-                  style={{ marginLeft: "1rem" }}
-                  disabled={uploading === task.id}
-                  onClick={() => {
-                    const fileInput = document.getElementById(`photo-${task.id}`);
-                    handleResolve(task.id, fileInput.files[0]);
-                  }}
-                >
-                  {uploading === task.id ? "Uploading..." : "Mark as Resolved"}
-                </button>
-                <p style={{ fontSize: "0.8rem", color: "gray", marginTop: "0.3rem" }}>
-                  Tapping this will ask camera + location permission — allow both.
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+              {task.status !== "Resolved" && !task.resolved_photo_url && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <input type="file" accept="image/*" capture="environment" id={"photo-" + task.id} />
+                  <button
+                    style={{ marginLeft: "1rem" }}
+                    disabled={uploading === task.id}
+                    onClick={function () {
+                      const fileInput = document.getElementById("photo-" + task.id);
+                      handleResolve(task.id, fileInput.files[0]);
+                    }}
+                  >
+                    {uploading === task.id ? "Uploading..." : "Mark as Resolved"}
+                  </button>
+                  <p style={{ fontSize: "0.8rem", color: "gray", marginTop: "0.3rem" }}>
+                    Tapping this will ask camera + location permission — allow both.
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
