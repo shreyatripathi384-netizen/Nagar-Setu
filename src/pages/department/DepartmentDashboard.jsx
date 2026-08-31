@@ -115,8 +115,24 @@ export default function DepartmentDashboard() {
           </select>
         </div>
 
-        {loading && <p>Loading complaints...</p>}
-        {!loading && filteredIssues.length === 0 && <p>No complaints found for this period.</p>}
+                {loading && (
+          <p style={{ color: "var(--navy)", fontStyle: "italic" }}>
+            Loading complaints, please wait...
+          </p>
+        )}
+                {!loading && filteredIssues.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "2rem",
+              color: "#888",
+              border: "1px dashed #ccc",
+              borderRadius: "8px",
+            }}
+          >
+            No complaints found for this period. 🎉
+          </div>
+        )}
 
         {!loading && filteredIssues.map(function (issue) {
           return (

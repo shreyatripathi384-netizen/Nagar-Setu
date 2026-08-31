@@ -84,8 +84,24 @@ export default function WorkerDashboard() {
           My Assigned Tasks
         </h2>
 
-        {loading && <p>Loading tasks...</p>}
-        {!loading && tasks.length === 0 && <p>No tasks assigned to you yet.</p>}
+                {loading && (
+          <p style={{ color: "var(--navy)", fontStyle: "italic" }}>
+            Loading your tasks, please wait...
+          </p>
+        )}
+                {!loading && tasks.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "2rem",
+              color: "#888",
+              border: "1px dashed #ccc",
+              borderRadius: "8px",
+            }}
+          >
+            No tasks assigned to you yet. Check back soon! 🛠️
+          </div>
+        )}
 
         {!loading && tasks.map(function (task) {
           return (
