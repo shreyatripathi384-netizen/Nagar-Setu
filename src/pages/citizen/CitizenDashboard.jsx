@@ -86,21 +86,21 @@ export default function CitizenDashboard() {
 
     const photoExt = photoFile.name.split(".").pop();
     const photoName = "citizen-" + profile.id + "-" + Date.now() + "." + photoExt;
-    const photoUpload = await supabase.storage.from("Issue media").upload(photoName, photoFile);
+    const photoUpload = await supabase.storage.from("Issue Media").upload(photoName, photoFile);
     if (photoUpload.error) {
       setError("Error uploading photo: " + photoUpload.error.message);
       setSubmitting(false);
       return;
     }
-    const photoUrl = supabase.storage.from("Issue media").getPublicUrl(photoName).data.publicUrl;
+    const photoUrl = supabase.storage.from("Issue Media").getPublicUrl(photoName).data.publicUrl;
 
     let videoUrl = null;
     if (videoFile) {
       const videoExt = videoFile.name.split(".").pop();
       const videoName = "citizen-video-" + profile.id + "-" + Date.now() + "." + videoExt;
-      const videoUpload = await supabase.storage.from("Issue media").upload(videoName, videoFile);
+      const videoUpload = await supabase.storage.from("Issue Media").upload(videoName, videoFile);
       if (!videoUpload.error) {
-        videoUrl = supabase.storage.from("Issue media").getPublicUrl(videoName).data.publicUrl;
+        videoUrl = supabase.storage.from("Issue Media").getPublicUrl(videoName).data.publicUrl;
       }
     }
 
