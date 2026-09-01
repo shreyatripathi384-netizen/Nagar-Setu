@@ -7,16 +7,18 @@ export default function DepartmentDashboard() {
   const { profile } = useAuth();
   const [issues, setIssues] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [pendingWorkers, setPendingWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
+  useEffect(function () {
     fetchIssues();
     fetchWorkers();
+    fetchPendingWorkers();
   }, [profile]);
 
   async function fetchIssues() {
-    if (!profile?.department_id) return;
+    if (!profile || !profile.department_id) return;
     const result = await supabase
       .from("issues")
       .select("*")
@@ -26,16 +28,60 @@ export default function DepartmentDashboard() {
     else setIssues(result.data);
     setLoading(false);
   }
-
-  async function fetchWorkers() {
-    if (!profile?.department_id) return;
-    const result = await supabase
+  async function handleApproveWorker(workerId) {
+    const { error } = await supabase
       .from("profiles")
-      .select("id, full_name")
-      .eq("department_id", profile.department_id)
-      .eq("role", "worker");
+      .update({ status: "active" })
+      .eq("id", workerId);
+    if (error) {
+      alert("Error approving worker: " + error.message);
+    } else {
+      fetchWorkers();
+    }
+  }
+  async function fetchWorkers() {
+    if (!profile || !profile.department_id) return;
+    const result = await supabase
+      from("profiles")
+      select("id, full_name, status")
+      eq("department_id", profile.department_id)
+      eq("role", "worker");
+      eq("status", "active");
     if (result.error) console.error("Error fetching workers:", result.error);
     else setWorkers(result.data);
+  }
+
+  async function fetchPendingWorkers() {
+    if (!profile || !profile.department_id) return;
+    const result = await supabase
+      .from("profiles")
+      .select("id, full_name, phone, aadhaar_number, email")
+      .eq("department_id", profile.department_id)
+      .eq("role", "worker")
+      .eq("status", "pending");
+    if (result.error) console.error("Error fetching pending workers:", result.error);
+    else setPendingWorkers(result.data);
+  }
+
+  async function approveWorker(workerId) {
+    const result = await supabase
+      .from("profiles")
+      .update({ status: "active" })
+      .eq("id", workerId);
+    if (result.error) alert("Error approving worker: " + result.error.message);
+    else {
+      fetchWorkers();
+      fetchPendingWorkers();
+    }
+  }
+
+  async function rejectWorker(workerId) {
+    const result = await supabase
+      .from("profiles")
+      .update({ status: "rejected" })
+      .eq("id", workerId);
+    if (result.error) alert("Error rejecting worker: " + result.error.message);
+    else fetchPendingWorkers();
   }
 
   async function assignWorker(issueId, workerId, deadline) {
@@ -75,6 +121,13 @@ export default function DepartmentDashboard() {
     }
   }
 
+  function getStatusColor(status) {
+    if (status === "Reported") return "#f59e0b";
+    if (status === "In Progress") return "#3b82f6";
+    if (status === "Resolved") return "#22c55e";
+    return "#999";
+  }
+
   function filterByDate(list) {
     if (filter === "all") return list;
     const now = new Date();
@@ -88,22 +141,85 @@ export default function DepartmentDashboard() {
       return true;
     });
   }
-    function getStatusColor(status) {
-    if (status === "Reported") return "#f59e0b";
-    if (status === "In Progress") return "#3b82f6";
-    if (status === "Resolved") return "#22c55e";
-    return "#999";
-  }
 
   const filteredIssues = filterByDate(issues);
 
   return (
     <div className="app-shell">
-      <DashboardHeader roleLabel={"Department: " + (profile && profile.departments ? profile.departments.name : "")} />
+      <DashboardHeader  roleLabel={"Department: " + (profile && profile.departments ? profile.departments.name : "")} />
+            {workers.filter((w) => w.status === "pending").length > 0 && (
+        <div style={{ padding: "1rem", background: "#fff3cd", marginBottom: "1rem" }}>
+          <h4>Pending Worker Approvals</h4>
+          {workers
+            .filter((w) => w.status === "pending")
+            .map(function (w) {
+              return (
+                <div key={w.id} style={{ marginBottom: "0.5rem" }}>
+                  {w.full_name}
+                  <button
+                    style={{ marginLeft: "1rem" }}
+                    onClick={() => handleApproveWorker(w.id)}
+                  >
+                    Approve
+                  </button>
+                </div>
+              );
+            })}
+        </div>
+      )}
       <div className="dashboard-shell">
         <h2 style={{ fontFamily: "var(--font-display)", color: "var(--navy)" }}>
           Department Complaints
         </h2>
+
+        {pendingWorkers.length > 0 && (
+          <div
+            style={{
+              background: "#fff8e6",
+              border: "1px solid #f0c674",
+              borderRadius: "8px",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
+              Pending Worker Requests ({pendingWorkers.length})
+            </h3>
+            {pendingWorkers.map(function (w) {
+              return (
+                <div
+                  key={w.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "0.5rem 0",
+                    borderTop: "1px solid #f0c674",
+                  }}
+                >
+                  <div>
+                    <strong>{w.full_name}</strong>
+                    <br />
+                    <span style={{ fontSize: "0.85rem", color: "#666" }}>
+                      {w.email} — {w.phone}
+                    </span>
+                  </div>
+                  <div>
+                    <button onClick={function () { approveWorker(w.id); }}>
+                      Approve
+                    </button>
+                    <button
+                      style={{ marginLeft: "0.5rem" }}
+                      onClick={function () { rejectWorker(w.id); }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div style={{ marginBottom: "1rem" }}>
           <label>Show: </label>
@@ -115,12 +231,13 @@ export default function DepartmentDashboard() {
           </select>
         </div>
 
-                {loading && (
+        {loading && (
           <p style={{ color: "var(--navy)", fontStyle: "italic" }}>
             Loading complaints, please wait...
           </p>
         )}
-                {!loading && filteredIssues.length === 0 && (
+
+        {!loading && filteredIssues.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -130,7 +247,7 @@ export default function DepartmentDashboard() {
               borderRadius: "8px",
             }}
           >
-            No complaints found for this period. 🎉
+            No complaints found for this period.
           </div>
         )}
 
@@ -143,7 +260,7 @@ export default function DepartmentDashboard() {
               <br />
               Reported on: {new Date(issue.created_at).toLocaleDateString()}
               <br />
-               Status:{" "}
+              Status:{" "}
               <span
                 style={{
                   backgroundColor: getStatusColor(issue.status),
@@ -164,7 +281,7 @@ export default function DepartmentDashboard() {
                   <label>Assign Worker: </label>
                   <select id={"worker-" + issue.id} defaultValue="">
                     <option value="" disabled>Select worker</option>
-                    {workers.map(function (w) {
+                    {workers.filter((w) => w.status === "active").map(function (w) {
                       return <option key={w.id} value={w.id}>{w.full_name}</option>;
                     })}
                   </select>

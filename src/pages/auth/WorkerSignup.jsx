@@ -48,7 +48,7 @@ export default function WorkerSignup() {
         aadhaar_number: aadhaar,
         role: "worker",
         department_id: dept.id,
-        status: "active",
+        status: "pending",
       });
       if (profileError) {
         setError(profileError.message);
@@ -58,7 +58,7 @@ export default function WorkerSignup() {
     }
 
     setLoading(false);
-    navigate("/worker/dashboard");
+    navigate("/worker/login");
   }
 
   return (
