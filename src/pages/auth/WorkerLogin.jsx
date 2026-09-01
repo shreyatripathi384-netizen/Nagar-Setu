@@ -9,17 +9,48 @@ export default function WorkerLogin() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  async function handleSubmit(e) {
+    async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
       setError(error.message);
-    } else {
-      navigate("/worker/dashboard");
+      setLoading(false);
+      return;
     }
+
+    const { data: userData } = await supabase.auth.getUser();
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("status")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (profileError || !profile) {
+      setError("Could not verify your account. Please contact your department.");
+      setLoading(false);
+      await supabase.auth.signOut();
+      return;
+    }
+
+    if (profile.status === "pending") {
+      setError("Your account is still waiting for approval from your department.");
+      setLoading(false);
+      await supabase.auth.signOut();
+      return;
+    }
+
+    if (profile.status === "rejected") {
+      setError("Your registration was rejected. Please contact your department.");
+      setLoading(false);
+      await supabase.auth.signOut();
+      return;
+    }
+
+    setLoading(false);
+    navigate("/worker/dashboard");
   }
 
   return (
