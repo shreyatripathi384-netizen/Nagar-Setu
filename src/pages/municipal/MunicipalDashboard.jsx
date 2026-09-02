@@ -29,6 +29,7 @@ export default function MunicipalDashboard() {
 
   useEffect(() => {
     loadPending();
+    loadStats();
   }, []);
 
   async function updateStatus(id, status, name) {
@@ -130,12 +131,12 @@ useEffect(() => {
                   <td>{p.employee_id}</td>
                   <td>{p.email}</td>
                   <td>
-                    <button className="btn-approve" onClick={() => updateStatus(p.id, "active")}>
-                      Approve
-                    </button>
-                    <button className="btn-reject" onClick={() => updateStatus(p.id, "rejected")}>
-                      Reject
-                    </button>
+                  <button className="btn-approve" onClick={() => updateStatus(p.id, "active", p.full_name)}>
+                    Approve
+                  </button>
+                  <button className="btn-reject" onClick={() => updateStatus(p.id, "rejected", p.full_name)}>
+                    Reject
+                  </button>
                   </td>
                 </tr>
               ))}
@@ -231,10 +232,11 @@ useEffect(() => {
       ))}
     </tbody>
   </table>
-)}
+)} 
   </>
 )}
       </div>
     </div>
   );
 }
+
