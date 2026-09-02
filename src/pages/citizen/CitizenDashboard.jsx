@@ -104,7 +104,7 @@ export default function CitizenDashboard() {
       }
     }
 
-    const classification = classifyIssue(description);
+        const classification = classifyIssue(description);
 
     const deptResult = await supabase
       .from("departments")
@@ -112,8 +112,50 @@ export default function CitizenDashboard() {
       .eq("dept_code", classification.departmentCode)
       .single();
 
+    // Check if a similar issue already exists (same location + category, not resolved)
+        const duplicateCheck = await supabase
+      .from("issues")
+      .select("id, report_count, severity")
+      .ilike("location_text", locationText.trim())
+      .eq("category", classification.category)
+      .neq("status", "Resolved")
+      .limit(1);
+
+    if (duplicateCheck.data && duplicateCheck.data.length > 0) {
+      const existing = duplicateCheck.data[0];
+      const newCount = (existing.report_count || 1) + 1;
+
+      // Escalate severity as report count grows
+      let newSeverity = existing.severity || "Low";
+      if (newCount >= 5) newSeverity = "High";
+      else if (newCount >= 3 && newSeverity !== "High") newSeverity = "Medium";
+
+      const mergeResult = await supabase
+        .from("issues")
+        .update({ report_count: newCount, severity: newSeverity })
+        .eq("id", existing.id);
+
+      if (mergeResult.error) {
+        setError("Error updating existing complaint: " + mergeResult.error.message);
+      } else {
+        await supabase
+          .from("profiles")
+          .update({ points: points + 5 })
+          .eq("id", profile.id);
+        setPoints(points + 5);
+        alert("Ye issue pehle se kisi aur ne report kiya hai — humne usi complaint ka count badha diya hai!");
+        setDescription("");
+        setLocationText("");
+        setUrgent(false);
+        photoInput.value = "";
+        videoInput.value = "";
+        fetchIssues();
+      }
+      setSubmitting(false);
+      return;
+    }
+
     const insertResult = await supabase.from("issues").insert({
-      citizen_id: profile.id,
       description: description,
       photo_url: photoUrl,
       video_url: videoUrl,
@@ -122,6 +164,7 @@ export default function CitizenDashboard() {
       severity: classification.severity,
       department_id: deptResult.data ? deptResult.data.id : null,
       status: "Reported",
+      report_count: 1,
       urgent_flag: urgent,
       resolved_lat: location ? location.lat : null,
       resolved_lng: location ? location.lng : null,
