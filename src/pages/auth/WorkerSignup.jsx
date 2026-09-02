@@ -7,6 +7,7 @@ export default function WorkerSignup() {
   const [phone, setPhone] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [departments, setDepartments] = useState([]);
+  const [selectedDept, setSelectedDept] = useState("");
     useEffect(function () {
     async function fetchDepartments() {
       const { data } = await supabase.from("departments").select("id, name");
@@ -14,7 +15,7 @@ export default function WorkerSignup() {
     }
     fetchDepartments();
   }, []);
-  const [selectedDept, setSelectedDept] = useState("");
+ 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

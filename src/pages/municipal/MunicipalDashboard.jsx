@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import DashboardHeader from "../../components/DashboardHeader";
 import { supabase } from "../../lib/supabaseClient";
-
+import { useAuth } from "../../context/AuthContext";
+import NotificationBell from "../../components/NotificationBell";
 /**
  * TODO (Member 5 - feature/municipal-dashboard):
  * - Total/pending/in-progress/resolved complaint counts
@@ -13,6 +14,7 @@ import { supabase } from "../../lib/supabaseClient";
  * since it is part of the core auth hierarchy.
  */
 export default function MunicipalDashboard() {
+    const { profile } = useAuth();
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,23 +38,23 @@ export default function MunicipalDashboard() {
   const { error } = await supabase.from("profiles").update({ status }).eq("id", id);
   if (!error) {
     loadPending();
-    setAuditLog((prev) => [
-      { action: `${status} — ${name}`, time: new Date().toLocaleString() },
-      ...prev,
-    ]);
+    const auditResult = await supabase.from("audit_log").insert({
+  action: `${status} — ${name}`,
+});
+console.log("Audit insert result:", auditResult);
+    loadAuditLog();
   }
 }
   const [counts, setCounts] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0 });
 const [deptStats, setDeptStats] = useState([]);
 const [statsLoading, setStatsLoading] = useState(true);
-
 async function loadStats() {
   setStatsLoading(true);
   const { data: complaints, error } = await supabase
-    .from("complaints")
-    .select("id, status, department_id, departments(name)");
-
+  .from("issues")
+  .select("*, departments(name)");
   if (!error && complaints) {
+    setAllIssues(complaints);
     const total = complaints.length;
     const resolved = complaints.filter(c => c.status === "Resolved").length;
     const inProgress = complaints.filter(c => c.status === "In Progress").length;
@@ -74,14 +76,41 @@ async function loadStats() {
   setStatsLoading(false);
 }
 const [auditLog, setAuditLog] = useState([]);
+async function loadAuditLog() {
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (!error && data) setAuditLog(data);
+}
+const [allIssues, setAllIssues] = useState([]);
+const [selectedStatus, setSelectedStatus] = useState(null);
+
+ function filterIssuesByStatus(list, key) {
+  if (key === "all") return list;
+  if (key === "Pending") {
+    return list.filter(function (i) {
+      return i.status === "Reported" || i.status === "Under Review";
+    });
+  }
+  return list.filter(function (i) {
+    return i.status === key;
+  });
+}
+
+function isOverdue(issue) {
+  if (!issue.resolution_deadline || issue.status === "Resolved") return false;
+  return new Date(issue.resolution_deadline) < new Date();
+}
 
 function getBadge(points) {
   if (points >= 100) return "Clean City Champion";
   if (points >= 50) return "Responsible Citizen";
   return "New Reporter";
 }
-const [topCitizens, setTopCitizens] = useState([]);
 
+const [topCitizens, setTopCitizens] = useState([]);
 async function loadGamification() {
   const { data, error } = await supabase
     .from("profiles")
@@ -96,11 +125,16 @@ async function loadGamification() {
 useEffect(() => {
   loadStats();
   loadGamification();
+  loadAuditLog();
 }, []);
+  const filteredList = selectedStatus ? filterIssuesByStatus(allIssues, selectedStatus) : [];
+  const overdueIssues = allIssues.filter(isOverdue);
 
+  
   return (
     <div className="app-shell">
       <DashboardHeader roleLabel="Municipal Corporation Head" />
+      <NotificationBell role="municipal" profile={profile} />
       <div className="dashboard-shell">
         <h2 style={{ fontFamily: "var(--font-display)", color: "var(--navy)" }}>
           Department Admin Requests
@@ -150,24 +184,124 @@ useEffect(() => {
 ) : (
   <>
     <div className="stats-grid">
-      <div className="stat-card">
+      <div className="stat-card" style={{ cursor: "pointer" }} onClick={function () { setSelectedStatus("all"); }}>
         <p>Total</p>
         <h3>{counts.total}</h3>
       </div>
-      <div className="stat-card">
+      <div className="stat-card" style={{ cursor: "pointer" }} onClick={function () { setSelectedStatus("Pending"); }}>
         <p>Pending</p>
         <h3>{counts.pending}</h3>
       </div>
-      <div className="stat-card">
+      <div className="stat-card" style={{ cursor: "pointer" }} onClick={function () { setSelectedStatus("In Progress"); }}>
         <p>In Progress</p>
         <h3>{counts.inProgress}</h3>
       </div>
-      <div className="stat-card">
+      <div className="stat-card" style={{ cursor: "pointer" }} onClick={function () { setSelectedStatus("Resolved"); }}>
         <p>Resolved</p>
         <h3>{counts.resolved}</h3>
       </div>
     </div>
+    {selectedStatus && (
+      <div style={{ margin: "1rem 0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3>{selectedStatus === "all" ? "All Complaints" : selectedStatus + " Complaints"}</h3>
+          <button onClick={function () { setSelectedStatus(null); }}>Close</button>
+        </div>
+        {filteredList.length === 0 ? (
+          <div className="placeholder-box">No complaints found.</div>
+        ) : (
+          filteredList.map(function (i) {
+            return (
+              <div key={i.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
+                <strong>{i.category || "Uncategorized"}</strong> — {i.severity || "N/A"}
+                <br />
+                Department: {i.departments?.name || "-"}
+                <br />
+                Location: {i.location_text || "-"}
+                <br />
+                Reported on: {i.created_at ? new Date(i.created_at).toLocaleDateString() : "-"}
+                <br />
+                Status:{" "}
+                <span
+                  style={{
+                    backgroundColor:
+                      i.status === "Reported" ? "#f59e0b" :
+                      i.status === "In Progress" ? "#3b82f6" :
+                      i.status === "Resolved" ? "#22c55e" : "#999",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.85rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {i.status}
+                </span>
+                <br />
+                {i.description}
+                              
 
+                {i.photo_url && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <img
+                      src={i.photo_url}
+                      alt="complaint"
+                      style={{ maxWidth: "200px", borderRadius: "6px", display: "block" }}
+                    />
+                  </div>
+                )}
+
+                {i.video_url && (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <video
+                      src={i.video_url}
+                      controls
+                      style={{ maxWidth: "250px", display: "block" }}
+                    />
+                  </div>
+                )}
+                {i.status === "In Progress" && i.resolution_deadline && (
+                  <>
+                    <br />
+                    <strong>Deadline:</strong> {new Date(i.resolution_deadline).toLocaleDateString()}
+                  </>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    )}
+
+    <h2 style={{ fontFamily: "var(--font-display)", color: "red" }}>
+      Overdue Complaints (Deadline Missed)
+    </h2>
+    {overdueIssues.length === 0 ? (
+      <div className="placeholder-box">No overdue complaints. All good!</div>
+    ) : (
+      <table className="request-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Department</th>
+            <th>Status</th>
+            <th>Deadline (Missed)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {overdueIssues.map(function (i) {
+            return (
+              <tr key={i.id} style={{ background: "#ffe5e5" }}>
+                <td>{i.title}</td>
+                <td>{i.departments?.name || "-"}</td>
+                <td>{i.status}</td>
+                <td>{i.resolution_deadline}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
     <h2 style={{ fontFamily: "var(--font-display)" }}>Department-wise</h2>
     <table className="request-table">
       <thead>
@@ -224,13 +358,13 @@ useEffect(() => {
       </tr>
     </thead>
     <tbody>
-      {auditLog.map((log, i) => (
-        <tr key={i}>
-          <td>{log.action}</td>
-          <td>{log.time}</td>
-        </tr>
-      ))}
-    </tbody>
+  {auditLog.map((log) => (
+    <tr key={log.id}>
+      <td>{log.action}</td>
+      <td>{new Date(log.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+    </tr>
+  ))}
+</tbody>
   </table>
 )} 
   </>

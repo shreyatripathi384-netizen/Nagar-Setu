@@ -3,6 +3,7 @@ import DashboardHeader from "../../components/DashboardHeader";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 import { classifyIssue } from "../../lib/ai";
+import NotificationBell from "../../components/NotificationBell";
 
 function getCurrentLocation() {
   return new Promise((resolve) => {
@@ -34,7 +35,7 @@ export default function CitizenDashboard() {
   const [description, setDescription] = useState("");
   const [locationText, setLocationText] = useState("");
   const [urgent, setUrgent] = useState(false);
-
+const [statusFilter, setStatusFilter] = useState("all");
   useEffect(() => {
     fetchIssues();
   }, [profile]);
@@ -51,7 +52,12 @@ export default function CitizenDashboard() {
     else setIssues(data);
     setLoading(false);
   }
-
+function filterByStatus(list) {
+  if (statusFilter === "all") return list;
+  return list.filter(function (issue) {
+    return issue.status === statusFilter;
+  });
+}
     async function handleComplainAgain(issueId) {
     const { error } = await supabase
       .from("issues")
@@ -196,11 +202,11 @@ export default function CitizenDashboard() {
     }
     setSubmitting(false);
   }
-
+const filteredIssues = filterByStatus(issues);
   return (
     <div>
       <DashboardHeader title="Citizen Dashboard" />
-
+<NotificationBell role="citizen" profile={profile} />
       <div style={{ padding: "1rem", maxWidth: "500px" }}>
                 <div style={{ marginBottom: "1rem" }}>
                     <strong>Points: {points}</strong>
@@ -262,10 +268,19 @@ export default function CitizenDashboard() {
 
       <div style={{ padding: "1rem" }}>
         <h3>My Complaints</h3>
+        <div style={{ marginBottom: "1rem" }}>
+  <label style={{ fontSize: "0.85rem" }}>Show: </label>
+  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+    <option value="all">All Status</option>
+    <option value="Reported">Reported</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Resolved">Resolved</option>
+  </select>
+</div>
         {loading && <p>Loading...</p>}
-        {!loading && issues.length === 0 && <p>You haven't reported any issues yet.</p>}
+        {!loading && filteredIssues.length === 0 && <p>No complaints found for this status.</p>}
         {!loading &&
-          issues.map(function (issue) {
+  filteredIssues.map(function (issue)  {
             return (
               <div key={issue.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
                 <strong>{issue.category || "Uncategorized"}</strong> — {issue.severity || "N/A"}

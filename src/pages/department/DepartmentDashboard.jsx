@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import DashboardHeader from "../../components/DashboardHeader";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
-
+import NotificationBell from "../../components/NotificationBell";
 export default function DepartmentDashboard() {
   const { profile } = useAuth();
   const [issues, setIssues] = useState([]);
@@ -10,7 +10,7 @@ export default function DepartmentDashboard() {
   const [pendingWorkers, setPendingWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-
+const [statusFilter, setStatusFilter] = useState("all");
   useEffect(function () {
     fetchIssues();
     fetchWorkers();
@@ -129,7 +129,10 @@ export default function DepartmentDashboard() {
     if (status === "Resolved") return "#22c55e";
     return "#999";
   }
-
+  function isOverdue(issue) {
+    if (!issue.resolution_deadline || issue.status === "Resolved") return false;
+    return new Date(issue.resolution_deadline) < new Date();
+  }
   function filterByDate(list) {
     if (filter === "all") return list;
     const now = new Date();
@@ -143,12 +146,19 @@ export default function DepartmentDashboard() {
       return true;
     });
   }
+  function filterByStatus(list) {
+  if (statusFilter === "all") return list;
+  return list.filter(function (issue) {
+    return issue.status === statusFilter;
+  });
+}
 
-  const filteredIssues = filterByDate(issues);
+  const filteredIssues = filterByStatus(filterByDate(issues));
 
   return (
     <div className="app-shell">
       <DashboardHeader  roleLabel={"Department: " + (profile && profile.departments ? profile.departments.name : "")} />
+      <NotificationBell role="department" profile={profile} />
             {workers.filter((w) => w.status === "pending").length > 0 && (
         <div style={{ padding: "1rem", background: "#fff3cd", marginBottom: "1rem" }}>
           <h4>Pending Worker Approvals</h4>
@@ -231,6 +241,14 @@ export default function DepartmentDashboard() {
             <option value="week">Last Week</option>
             <option value="month">Last Month</option>
           </select>
+
+          <label style={{ marginLeft: "1rem" }}>Status: </label>
+          <select value={statusFilter} onChange={function (e) { setStatusFilter(e.target.value); }}>
+            <option value="all">All Status</option>
+            <option value="Reported">Reported</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
         </div>
 
         {loading && (
@@ -304,10 +322,60 @@ export default function DepartmentDashboard() {
               >
                 {issue.status}
               </span>
+              {isOverdue(issue) && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#dc2626",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  ⚠ Deadline Missed
+                </span>
+              )}
+                            {issue.urgent_flag && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#ea580c",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🔴 URGENT — Citizen Re-reported
+                </span>
+              )}
               <br />
               {issue.description}
 
-              {issue.status !== "Resolved" && !issue.resolved_photo_url && (
+              {issue.photo_url && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <img
+                    src={issue.photo_url}
+                    alt="complaint"
+                    style={{ maxWidth: "200px", borderRadius: "6px", display: "block" }}
+                  />
+                </div>
+              )}
+
+              {issue.video_url && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <video
+                    src={issue.video_url}
+                    controls
+                    style={{ maxWidth: "250px", display: "block" }}
+                  />
+                </div>
+              )}
+
+              {!issue.assigned_worker_id && issue.status !== "Resolved" && !issue.resolved_photo_url && (
                 <div style={{ marginTop: "0.75rem" }}>
                   <label>Assign Worker: </label>
                   <select id={"worker-" + issue.id} defaultValue="">
@@ -336,7 +404,22 @@ export default function DepartmentDashboard() {
                   </button>
                 </div>
               )}
-
+               {issue.assigned_worker_id && issue.status !== "Resolved" && !issue.resolved_photo_url && (
+  <div style={{ marginTop: "0.75rem", padding: "0.5rem", background: "#eef2ff", borderRadius: "6px" }}>
+    <strong>Assigned to:</strong>{" "}
+    {(() => {
+      const w = workers.find((w) => w.id === issue.assigned_worker_id);
+      return w ? w.full_name : "Worker";
+    })()}
+    {issue.resolution_deadline && (
+      <>
+        <br />
+        <strong>Deadline:</strong>{" "}
+        {new Date(issue.resolution_deadline).toLocaleDateString()}
+      </>
+    )}
+  </div>
+)}
               {issue.resolved_photo_url && issue.status !== "Resolved" && (
                 <div style={{ marginTop: "0.75rem", border: "1px solid #ccc", padding: "0.75rem" }}>
                   <strong>Resolution Proof Submitted:</strong>

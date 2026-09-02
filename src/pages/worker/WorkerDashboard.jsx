@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import DashboardHeader from "../../components/DashboardHeader";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
-
+import NotificationBell from "../../components/NotificationBell";
 export default function WorkerDashboard() {
   const { profile } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(null);
-
+const [statusFilter, setStatusFilter] = useState("all");
   useEffect(() => {
     fetchTasks();
   }, [profile]);
@@ -24,7 +24,12 @@ export default function WorkerDashboard() {
     else setTasks(data);
     setLoading(false);
   }
-
+function filterByStatus(list) {
+  if (statusFilter === "all") return list;
+  return list.filter(function (task) {
+    return task.status === statusFilter;
+  });
+}
   function getCurrentLocation() {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -75,21 +80,30 @@ export default function WorkerDashboard() {
     }
     setUploading(null);
   }
-
+const filteredTasks = filterByStatus(tasks);
   return (
     <div className="app-shell">
       <DashboardHeader roleLabel="Field Worker" />
+      <NotificationBell role="worker" profile={profile} />
       <div className="dashboard-shell">
         <h2 style={{ fontFamily: "var(--font-display)", color: "var(--navy)" }}>
           My Assigned Tasks
         </h2>
-
+        <div style={{ marginBottom: "1rem" }}>
+          <label style={{ fontSize: "0.85rem" }}>Show: </label>
+          <select value={statusFilter} onChange={function (e) { setStatusFilter(e.target.value); }}>
+            <option value="all">All Status</option>
+            <option value="Reported">Reported</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
                 {loading && (
           <p style={{ color: "var(--navy)", fontStyle: "italic" }}>
             Loading your tasks, please wait...
           </p>
         )}
-                {!loading && tasks.length === 0 && (
+                       {!loading && filteredTasks.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -103,7 +117,7 @@ export default function WorkerDashboard() {
           </div>
         )}
 
-        {!loading && tasks.map(function (task) {
+                {!loading && filteredTasks.map(function (task) {
           return (
             <div key={task.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
               <strong>{task.category || "Uncategorized"}</strong> — {task.severity || "N/A"}
@@ -127,7 +141,27 @@ export default function WorkerDashboard() {
                 {task.status}
               </span>
               <br />
-              {task.description}
+                           {task.description}
+
+              {task.photo_url && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <img
+                    src={task.photo_url}
+                    alt="complaint"
+                    style={{ maxWidth: "200px", borderRadius: "6px", display: "block" }}
+                  />
+                </div>
+              )}
+
+              {task.video_url && (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <video
+                    src={task.video_url}
+                    controls
+                    style={{ maxWidth: "250px", display: "block" }}
+                  />
+                </div>
+              )}
 
               {task.resolved_photo_url && (
                 <div style={{ marginTop: "0.5rem" }}>
