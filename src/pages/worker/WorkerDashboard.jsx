@@ -49,14 +49,14 @@ export default function WorkerDashboard() {
     const fileExt = file.name.split(".").pop();
     const fileName = "resolved-" + issueId + "-" + Date.now() + "." + fileExt;
 
-    const uploadResult = await supabase.storage.from("Issue media").upload(fileName, file);
+    const uploadResult = await supabase.storage.from("Issue Media").upload(fileName, file);
     if (uploadResult.error) {
       alert("Error uploading photo: " + uploadResult.error.message);
       setUploading(null);
       return;
     }
 
-    const urlResult = supabase.storage.from("Issue media").getPublicUrl(fileName);
+    const urlResult = supabase.storage.from("Issue Media").getPublicUrl(fileName);
 
     const updateResult = await supabase
       .from("issues")

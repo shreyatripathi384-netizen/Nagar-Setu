@@ -255,6 +255,20 @@ export default function DepartmentDashboard() {
           return (
             <div key={issue.id} className="placeholder-box" style={{ marginBottom: "1rem" }}>
               <strong>{issue.category || "Uncategorized"}</strong> — {issue.severity || "N/A"}
+      {issue.report_count > 1 && (
+        <span
+          style={{
+            marginLeft: "0.6rem",
+            backgroundColor: "#d9534f",
+            color: "white",
+            padding: "2px 8px",
+            borderRadius: "10px",
+            fontSize: "0.75rem",
+          }}
+        >
+          Reported {issue.report_count} times
+        </span>
+      )}
               <br />
               Location: {issue.location_text}
               <br />
