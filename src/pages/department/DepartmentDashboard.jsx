@@ -63,13 +63,15 @@ export default function DepartmentDashboard() {
     else setPendingWorkers(result.data);
   }
 
-  async function approveWorker(workerId) {
+    async function approveWorker(workerId) {
+    const generatedId = "WRK-" + Date.now().toString().slice(-6);
     const result = await supabase
       .from("profiles")
-      .update({ status: "active" })
+      .update({ status: "active", worker_id: generatedId })
       .eq("id", workerId);
     if (result.error) alert("Error approving worker: " + result.error.message);
     else {
+      alert("Worker approved! Worker ID: " + generatedId);
       fetchWorkers();
       fetchPendingWorkers();
     }

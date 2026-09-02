@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -6,7 +6,15 @@ export default function WorkerSignup() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [aadhaar, setAadhaar] = useState("");
-  const [workerCode, setWorkerCode] = useState("");
+  const [departments, setDepartments] = useState([]);
+    useEffect(function () {
+    async function fetchDepartments() {
+      const { data } = await supabase.from("departments").select("id, name");
+      if (data) setDepartments(data);
+    }
+    fetchDepartments();
+  }, []);
+  const [selectedDept, setSelectedDept] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,18 +26,7 @@ export default function WorkerSignup() {
     setError("");
     setLoading(true);
 
-    // Validate the worker code against a real department before creating an account.
-    const { data: dept, error: deptError } = await supabase
-      .from("departments")
-      .select("id, name")
-      .eq("worker_code", workerCode.trim())
-      .maybeSingle();
-
-    if (deptError || !dept) {
-      setError("Worker code not recognized. Check the code given by your department.");
-      setLoading(false);
-      return;
-    }
+    
 
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
     if (signUpError) {
@@ -47,7 +44,7 @@ export default function WorkerSignup() {
         phone,
         aadhaar_number: aadhaar,
         role: "worker",
-        department_id: dept.id,
+        department_id: selectedDept,
         status: "pending",
       });
       if (profileError) {
@@ -76,8 +73,13 @@ export default function WorkerSignup() {
         <label>Aadhaar Number</label>
         <input required value={aadhaar} onChange={(e) => setAadhaar(e.target.value)} />
 
-        <label>Department Worker Code</label>
-        <input required value={workerCode} onChange={(e) => setWorkerCode(e.target.value)} />
+         <label>Department</label>
+            <select value={selectedDept} onChange={function (e) { setSelectedDept(e.target.value); }} required>
+              <option value="" disabled>Select department</option>
+              {departments.map(function (d) {
+                return <option key={d.id} value={d.id}>{d.name}</option>;
+              })}
+            </select>
 
         <label>Email</label>
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
