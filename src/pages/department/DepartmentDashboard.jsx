@@ -337,11 +337,26 @@ const [statusFilter, setStatusFilter] = useState("all");
                   ⚠ Deadline Missed
                 </span>
               )}
-                            {issue.urgent_flag && (
+                                        {issue.urgent_flag && !issue.re_reported && (
                 <span
                   style={{
                     marginLeft: "0.5rem",
-                    backgroundColor: "#ea580c",
+                    backgroundColor: "#f97316",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🔶 Marked Urgent
+                </span>
+              )}
+              {issue.re_reported && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#dc2626",
                     color: "white",
                     padding: "2px 10px",
                     borderRadius: "12px",

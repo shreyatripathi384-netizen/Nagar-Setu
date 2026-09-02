@@ -24,6 +24,13 @@ const [statusFilter, setStatusFilter] = useState("all");
     else setTasks(data);
     setLoading(false);
   }
+  function sortByPriority(list) {
+  return [...list].sort((a, b) => {
+    const aUrgent = a.urgent_flag || a.re_reported ? 0 : 1;
+    const bUrgent = b.urgent_flag || b.re_reported ? 0 : 1;
+    return aUrgent - bUrgent;
+  });
+}
 function filterByStatus(list) {
   if (statusFilter === "all") return list;
   return list.filter(function (task) {
@@ -80,7 +87,7 @@ function filterByStatus(list) {
     }
     setUploading(null);
   }
-const filteredTasks = filterByStatus(tasks);
+const filteredTasks = sortByPriority(filterByStatus(tasks));
   return (
     <div className="app-shell">
       <DashboardHeader roleLabel="Field Worker" />
@@ -139,6 +146,36 @@ const filteredTasks = filterByStatus(tasks);
                 }}
               >
                 {task.status}
+                              {task.urgent_flag && !task.re_reported && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#f97316",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🔶 Marked Urgent
+                </span>
+              )}
+              {task.re_reported && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#dc2626",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🔴 URGENT — Citizen Re-reported
+                </span>
+              )}
               </span>
               <br />
                            {task.description}

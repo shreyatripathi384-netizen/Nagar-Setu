@@ -239,7 +239,36 @@ useEffect(() => {
                 </span>
                 <br />
                 {i.description}
-                              
+                                              {i.urgent_flag && !i.re_reported && (
+                  <span
+                    style={{
+                      marginLeft: "0.5rem",
+                      backgroundColor: "#f97316",
+                      color: "white",
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                      fontSize: "0.8rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    🔶 Marked Urgent
+                  </span>
+                )}
+                {i.re_reported && (
+                  <span
+                    style={{
+                      marginLeft: "0.5rem",
+                      backgroundColor: "#dc2626",
+                      color: "white",
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                      fontSize: "0.8rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    🔴 URGENT — Citizen Re-reported
+                  </span>
+                )}
 
                 {i.photo_url && (
                   <div style={{ marginTop: "0.5rem" }}>
