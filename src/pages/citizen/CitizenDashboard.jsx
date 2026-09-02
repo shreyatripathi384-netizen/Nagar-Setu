@@ -156,6 +156,7 @@ export default function CitizenDashboard() {
     }
 
     const insertResult = await supabase.from("issues").insert({
+      citizen_id: profile.id,
       description: description,
       photo_url: photoUrl,
       video_url: videoUrl,
