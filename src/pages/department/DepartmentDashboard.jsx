@@ -42,11 +42,11 @@ export default function DepartmentDashboard() {
   async function fetchWorkers() {
     if (!profile || !profile.department_id) return;
     const result = await supabase
-      from("profiles")
-      select("id, full_name, status")
-      eq("department_id", profile.department_id)
-      eq("role", "worker");
-      eq("status", "active");
+      .from("profiles")
+      .select("id, full_name, status")
+      .eq("department_id", profile.department_id)
+      .eq("role", "worker")
+      .eq("status", "active");
     if (result.error) console.error("Error fetching workers:", result.error);
     else setWorkers(result.data);
   }
@@ -275,6 +275,21 @@ export default function DepartmentDashboard() {
               Location: {issue.location_text}
               <br />
               Reported on: {new Date(issue.created_at).toLocaleDateString()}
+              <br />
+              {issue.report_count > 1 && (
+                <span
+                  style={{
+                    background: "#fde68a",
+                    color: "#78350f",
+                    padding: "2px 8px",
+                    borderRadius: "8px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Reported {issue.report_count} times
+                </span>
+              )}
               <br />
               Status:{" "}
               <span
