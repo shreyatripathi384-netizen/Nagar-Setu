@@ -75,6 +75,17 @@ async function loadStats() {
   }
   setStatsLoading(false);
 }
+function sortByPriority(list) {
+  const severityRank = { High: 0, Medium: 1, Low: 2 };
+  return [...list].sort((a, b) => {
+    const aUrgent = a.urgent_flag || a.re_reported ? 0 : 1;
+    const bUrgent = b.urgent_flag || b.re_reported ? 0 : 1;
+    if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+    const aSev = severityRank[a.severity] ?? 3;
+    const bSev = severityRank[b.severity] ?? 3;
+    return aSev - bSev;
+  });
+}
 const [auditLog, setAuditLog] = useState([]);
 async function loadAuditLog() {
   const { data, error } = await supabase

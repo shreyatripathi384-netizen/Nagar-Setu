@@ -9,6 +9,7 @@ export default function WorkerDashboard() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(null);
 const [statusFilter, setStatusFilter] = useState("all");
+const [filter, setFilter] = useState("all");
   useEffect(() => {
     fetchTasks();
   }, [profile]);
@@ -35,6 +36,18 @@ function filterByStatus(list) {
   if (statusFilter === "all") return list;
   return list.filter(function (task) {
     return task.status === statusFilter;
+  });
+}
+function filterByDate(list) {
+  if (filter === "all") return list;
+  const now = new Date();
+  return list.filter(function (task) {
+    const createdDate = new Date(task.created_at);
+    const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (filter === "day") return diffDays <= 1;
+    if (filter === "week") return diffDays <= 7;
+    if (filter === "month") return diffDays <= 30;
+    return true;
   });
 }
   function getCurrentLocation() {
@@ -87,7 +100,7 @@ function filterByStatus(list) {
     }
     setUploading(null);
   }
-const filteredTasks = sortByPriority(filterByStatus(tasks));
+const filteredTasks = sortByPriority(filterByStatus(filterByDate(tasks)));
   return (
     <div className="app-shell">
       <DashboardHeader roleLabel="Field Worker" />
@@ -96,6 +109,15 @@ const filteredTasks = sortByPriority(filterByStatus(tasks));
         <h2 style={{ fontFamily: "var(--font-display)", color: "var(--navy)" }}>
           My Assigned Tasks
         </h2>
+        <div style={{ marginBottom: "1rem" }}>
+  <label style={{ fontSize: "0.85rem" }}>Time: </label>
+  <select value={filter} onChange={function (e) { setFilter(e.target.value); }}>
+    <option value="all">All Time</option>
+    <option value="day">Last Day</option>
+    <option value="week">Last Week</option>
+    <option value="month">Last Month</option>
+  </select>
+</div>
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ fontSize: "0.85rem" }}>Show: </label>
           <select value={statusFilter} onChange={function (e) { setStatusFilter(e.target.value); }}>

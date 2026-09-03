@@ -36,6 +36,7 @@ export default function CitizenDashboard() {
   const [locationText, setLocationText] = useState("");
   const [urgent, setUrgent] = useState(false);
 const [statusFilter, setStatusFilter] = useState("all");
+const [filter, setFilter] = useState("all");
   useEffect(() => {
     fetchIssues();
   }, [profile]);
@@ -58,11 +59,23 @@ function filterByStatus(list) {
     return issue.status === statusFilter;
   });
 }
+function filterByDate(list) {
+  if (filter === "all") return list;
+  const now = new Date();
+  return list.filter(function (issue) {
+    const createdDate = new Date(issue.created_at);
+    const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (filter === "day") return diffDays <= 1;
+    if (filter === "week") return diffDays <= 7;
+    if (filter === "month") return diffDays <= 30;
+    return true;
+  });
+}
     async function handleComplainAgain(issueId) {
-    const { error } = await supabase
-      .from("issues")
-      .update({ urgent_flag: true })
-      .eq("id", issueId);
+  const { error } = await supabase
+    .from("issues")
+    .update({ re_reported: true })
+    .eq("id", issueId);
     if (!error) {
       alert("Reminder sent to department!");
       fetchIssues();
@@ -202,7 +215,7 @@ function filterByStatus(list) {
     }
     setSubmitting(false);
   }
-const filteredIssues = filterByStatus(issues);
+const filteredIssues = filterByStatus(filterByDate(issues));
   return (
     <div>
       <DashboardHeader title="Citizen Dashboard" />
@@ -269,6 +282,15 @@ const filteredIssues = filterByStatus(issues);
       <div style={{ padding: "1rem" }}>
         <h3>My Complaints</h3>
         <div style={{ marginBottom: "1rem" }}>
+  <label style={{ fontSize: "0.85rem" }}>Time: </label>
+  <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+    <option value="all">All Time</option>
+    <option value="day">Last Day</option>
+    <option value="week">Last Week</option>
+    <option value="month">Last Month</option>
+  </select>
+</div>
+        <div style={{ marginBottom: "1rem" }}>
   <label style={{ fontSize: "0.85rem" }}>Show: </label>
   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
     <option value="all">All Status</option>
@@ -296,6 +318,15 @@ const filteredIssues = filterByStatus(issues);
                     style={{ maxWidth: "150px", marginTop: "0.5rem", borderRadius: "6px" }}
                   />
                 )}
+                {issue.video_url && (
+  <div style={{ marginTop: "0.5rem" }}>
+    <video
+      src={issue.video_url}
+      controls
+      style={{ maxWidth: "250px", display: "block" }}
+    />
+  </div>
+)}
                 <br />
                 <span
                   style={{
@@ -313,6 +344,8 @@ const filteredIssues = filterByStatus(issues);
                                 {issue.resolution_deadline && (
                   <p style={{ fontSize: "0.8rem", marginTop: "0.3rem" }}>
                     Expected resolution by: {new Date(issue.resolution_deadline).toLocaleDateString()}
+                                 
+              
                   </p>
                 )}
 
@@ -328,7 +361,22 @@ const filteredIssues = filterByStatus(issues);
                     <button
                       style={{ marginTop: "0.4rem", fontSize: "0.8rem" }}
                       onClick={() => handleComplainAgain(issue.id)}
-                    >
+                      >
+                       {issue.urgent_flag && !issue.re_reported && (
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    backgroundColor: "#f97316",
+                    color: "white",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🔶 Marked Urgent
+                </span>
+                       )}
                       Complain Again
                     </button>
                   )}

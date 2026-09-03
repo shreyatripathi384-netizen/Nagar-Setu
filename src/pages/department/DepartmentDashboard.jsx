@@ -134,18 +134,18 @@ const [statusFilter, setStatusFilter] = useState("all");
     return new Date(issue.resolution_deadline) < new Date();
   }
   function filterByDate(list) {
-    if (filter === "all") return list;
-    const now = new Date();
-    return list.filter(function (issue) {
-      const createdDate = new Date(issue.created_at);
-      const diffMs = now - createdDate;
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      if (filter === "day") return diffDays <= 1;
-      if (filter === "week") return diffDays <= 7;
-      if (filter === "month") return diffDays <= 30;
-      return true;
-    });
-  }
+  if (filter === "all") return list;
+  const now = new Date();
+  return list.filter(function (issue) {
+    const createdDate = new Date(issue.created_at);
+    const diffMs = now.getTime() - createdDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (filter === "day") return diffDays <= 1;
+    if (filter === "week") return diffDays <= 7;
+    if (filter === "month") return diffDays <= 30;
+    return true;
+  });
+}
   function filterByStatus(list) {
   if (statusFilter === "all") return list;
   return list.filter(function (issue) {
